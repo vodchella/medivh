@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from arrow import Arrow
 import matplotlib.pyplot as plt
-from pandas.core.frame import DataFrame
+from pandas import Series, DataFrame
 from sqlalchemy import create_engine
 from typing import List, Callable, Union
 
@@ -44,6 +44,22 @@ def create_array_with_zeroes(data_frame: DataFrame, beg: Arrow, end: Arrow) -> L
     return arr
 
 
+def combine_series(s1: Series, s2: Series):
+    def add_percent(v, percent):
+        return v * (1 + (percent / 100))
+
+    def is_nan_or_zero(v):
+        return np.isnan(v) or v == 0.0
+
+    def mean_with_weight(v1, v2):
+        if is_nan_or_zero(v1):
+            return add_percent(v2, -10)
+        else:
+            return add_percent(np.mean([v1, v2]), 10)
+
+    return s1.combine(s2, mean_with_weight)
+
+
 def get_daily_sales_by_barcode(barcode: int) -> DataFrame:
     data = pd.read_sql(f'select date as date_idx, '
                        f'       quantity '
@@ -67,8 +83,8 @@ def get_forecast_by_period(data_frame: DataFrame, beg: Arrow, end: Arrow, strate
     return create_df_indexed_by_date(DataFrame(data, columns=['date_idx', 'quantity']))
 
 
-beg_date = arrow.get(2019, 1, 1)
-end_date = arrow.get(2019, 4, 30)
+beg_date = arrow.get(2020, 1, 1)
+end_date = arrow.get(2020, 4, 30)
 # 8887290101004 - coffee
 # 5449000133328 - coca
 # 48742245      - parliament
@@ -83,6 +99,7 @@ real = create_df_with_zeroes(df, beg_date, end_date)
 # real.insert(len(real.columns), 'old', old)
 real.insert(len(real.columns), 'forecast_1', forecast_1)
 real.insert(len(real.columns), 'forecast_2', forecast_2)
+real.insert(len(real.columns), 'combined', forecast_1.combine(forecast_2, combine_series))
 
 real.plot()
 plt.show()
