@@ -7,10 +7,11 @@ from pandas import Series, DataFrame
 from sqlalchemy import create_engine
 from typing import List, Callable, Union
 
+IDX_COL = 'date_idx'
 engine = create_engine('mysql+mysqlconnector://root:root@localhost/medivh')
 
 
-def create_df_indexed_by_date(data_frame: DataFrame, index_col: str = 'date_idx') -> DataFrame:
+def create_df_indexed_by_date(data_frame: DataFrame, index_col: str = IDX_COL) -> DataFrame:
     index = pd.DatetimeIndex(pd.to_datetime(data_frame[index_col]))
     result = data_frame.set_index(index).sort_index()
     result.drop(index_col, axis=1, inplace=True)
@@ -30,7 +31,7 @@ def create_df_with_zeroes(data_frame: DataFrame,
         except KeyError:
             value = 0.0
         arr.append([day.date(), value])
-    return create_df_indexed_by_date(DataFrame(arr, columns=['date_idx', 'quantity']))
+    return create_df_indexed_by_date(DataFrame(arr, columns=[IDX_COL, 'quantity']))
 
 
 def create_array_with_zeroes(data_frame: DataFrame, beg: Arrow, end: Arrow) -> List[float]:
@@ -42,6 +43,15 @@ def create_array_with_zeroes(data_frame: DataFrame, beg: Arrow, end: Arrow) -> L
             value = 0.0
         arr.append(value)
     return arr
+
+
+def smooth_df(data_frame: DataFrame, beg: Arrow, end: Arrow):
+    # Simple moving average algorithm
+    arr = []
+    for day in Arrow.range('day', beg, end):
+        past_week = create_array_with_zeroes(data_frame, day.shift(days=-6), day)
+        arr.append([day.date(), float(np.mean(past_week))])
+    return create_df_indexed_by_date(DataFrame(arr, columns=[IDX_COL, 'quantity']))
 
 
 def combine_series(s1: Series, s2: Series):
@@ -68,38 +78,24 @@ def get_daily_sales_by_barcode(barcode: int) -> DataFrame:
     return create_df_indexed_by_date(data)
 
 
-def get_forecast(data_frame: DataFrame, for_date: Arrow, strategy: str = 'mean_past_week') -> float:
-    switcher = {
-        'mean_past_week': (for_date.shift(days=-7), for_date.shift(days=-1)),
-        'mean_past_year_week': (for_date.shift(days=-7).shift(years=-1), for_date.shift(days=-1).shift(years=-1)),
-    }
-    beg, end = switcher.get(strategy)
-    arr = create_array_with_zeroes(data_frame, beg, end)
-    return float(np.mean(arr))
-
-
-def get_forecast_by_period(data_frame: DataFrame, beg: Arrow, end: Arrow, strategy: str = 'mean_past_week'):
-    data = [[day.date(), get_forecast(data_frame, day, strategy)] for day in Arrow.range('day', beg, end)]
-    return create_df_indexed_by_date(DataFrame(data, columns=['date_idx', 'quantity']))
-
-
-beg_date = arrow.get(2020, 1, 1)
-end_date = arrow.get(2020, 4, 30)
 # 8887290101004 - coffee
 # 5449000133328 - coca
 # 48742245      - parliament
 # 48743587      - winston
+
+now = arrow.get(2020, 2, 26)
+beg_date = arrow.get(2019, 12, 1)
+end_date = arrow.get(2020, 4, 30)
 df = get_daily_sales_by_barcode(48743587)
 
-forecast_1 = get_forecast_by_period(df, beg_date, end_date, 'mean_past_week')
-forecast_2 = get_forecast_by_period(df, beg_date, end_date, 'mean_past_year_week')
-real = create_df_with_zeroes(df, beg_date, end_date)
-# old = create_df_with_zeroes(df, beg_date, end_date, lambda a: a.shift(years=-1))
+real = create_df_with_zeroes(df, beg_date.shift(weeks=-1), end_date)
+old = create_df_with_zeroes(df, beg_date.shift(weeks=-1), end_date, lambda a: a.shift(years=-1))
+real_smoothed = smooth_df(real, beg_date, now)
+old_smoothed = smooth_df(old, beg_date, end_date)
 
-# real.insert(len(real.columns), 'old', old)
-real.insert(len(real.columns), 'forecast_1', forecast_1)
-real.insert(len(real.columns), 'forecast_2', forecast_2)
-real.insert(len(real.columns), 'combined', forecast_1.combine(forecast_2, combine_series))
+real.columns = ['real']
+real.insert(len(real.columns), 'smoothed', real_smoothed)
+real.insert(len(real.columns), 'old', old_smoothed)
 
 real.plot()
 plt.show()
