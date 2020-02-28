@@ -63,16 +63,13 @@ def smooth_df(data_frame: DataFrame, beg: Arrow, end: Arrow):
 
 
 def compare_df(new_df: DataFrame, old_df: DataFrame, beg: Arrow, end: Arrow) -> float:
-    arr = []
-    for day in Arrow.range('day', beg, end):
-        new_val = new_df.loc[day.date()].values[0]
-        old_val = old_df.loc[day.date()].values[0]
-        if new_val != 0.0:
-            percent_diff = 100 - (old_val * 100 / new_val)
-        else:
-            percent_diff = 100 if old_val != 0.0 else 0
-        arr.append(percent_diff)
-    return float(np.mean(arr))
+    new_mean = new_df.loc[beg.date():end.date()].mean().values[0]
+    old_mean = old_df.loc[beg.date():end.date()].mean().values[0]
+    if old_mean != 0.0:
+        percent_diff = (new_mean * 100 / old_mean) - 100
+    else:
+        raise Exception('No data for past year')
+    return percent_diff
 
 
 def increase_df(data_frame: DataFrame, inc_percent: float, beg: Arrow, end: Arrow):
@@ -95,7 +92,7 @@ def get_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow) -> DataFram
     real_smoothed = smooth_df(real, beg_date, last_data_date)
     old_smoothed = smooth_df(old, beg_date, end_date)
 
-    percent = compare_df(real_smoothed, old_smoothed, beg_date, now)
+    percent = compare_df(real_smoothed, old_smoothed, now.shift(days=1), end_date)
     forecast = increase_df(old_smoothed, percent, now.shift(days=1), end_date)
 
     result = real
@@ -107,15 +104,20 @@ def get_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow) -> DataFram
     return result
 
 
-# 8887290101004 - coffee
-# 5449000133328 - coca
-# 48742245      - parliament
-# 48743587      - winston
+products = {
+    8887290101004: 'Coffee 3 in 1',
+    5449000133328: 'Coca cola',
+    4870204391510: 'Dizzy',
+    4680036912629: 'Gorilla',
+    48742245: 'Parliament',
+    48743587: 'Winston',
+}
 
 
+barcode = 8887290101004
 today = arrow.get(2020, 1, 26)  # MUST be less or equal to last_data_date
 forecast_before_date = today.shift(months=1)
-df = get_daily_sales_by_barcode(48742245)
+df = get_daily_sales_by_barcode(barcode)
 forecast_data = get_forecast(df, today, forecast_before_date)
-forecast_data.plot(title='Parliament')
+forecast_data.plot(title=products[barcode])
 plt.show()
