@@ -8,10 +8,10 @@ from sqlalchemy import create_engine
 from typing import List, Callable, Union
 
 IDX_COL = 'date_idx'
-engine = create_engine('mysql+mysqlconnector://root:root@localhost/medivh')
 
 
 def get_daily_sales_by_barcode(barcode: int) -> DataFrame:
+    engine = create_engine('mysql+mysqlconnector://root:root@localhost/medivh')
     data = pd.read_sql(f'select date as date_idx, '
                        f'       quantity '
                        f'from   medivh.sales__by_day '
@@ -84,32 +84,38 @@ def increase_df(data_frame: DataFrame, inc_percent: float, beg: Arrow, end: Arro
     return create_df_indexed_by_date(DataFrame(arr, columns=[IDX_COL, 'quantity']))
 
 
+def get_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow) -> DataFrame:
+    last_data_date = arrow.get(data_frame.index.max())
+
+    beg_date = now.shift(months=-1)
+    end_date = for_date
+
+    real = create_df_with_zeroes(data_frame, beg_date.shift(weeks=-1), end_date)
+    old = create_df_with_zeroes(data_frame, beg_date.shift(weeks=-1), end_date, lambda a: a.shift(years=-1))
+    real_smoothed = smooth_df(real, beg_date, last_data_date)
+    old_smoothed = smooth_df(old, beg_date, end_date)
+
+    percent = compare_df(real_smoothed, old_smoothed, beg_date, now)
+    forecast = increase_df(old_smoothed, percent, now.shift(days=1), end_date)
+
+    result = real
+    result.columns = ['this_year_sales']
+    result.insert(len(result.columns), 'this_year_sales_smoothed', real_smoothed)
+    result.insert(len(result.columns), 'past_year_sales_smoothed', old_smoothed)
+    result.insert(len(result.columns), 'forecast', forecast)
+
+    return result
+
+
 # 8887290101004 - coffee
 # 5449000133328 - coca
 # 48742245      - parliament
 # 48743587      - winston
 
-last_data_date = arrow.get(2020, 2, 26)
-now = arrow.get(2020, 1, 26)  # MUST be less or equal to last_data_date
-for_date = now.shift(months=1)  # Forecast before this date
 
-beg_date = now.shift(months=-1)
-end_date = for_date
-df = get_daily_sales_by_barcode(48743587)
-
-real = create_df_with_zeroes(df, beg_date.shift(weeks=-1), end_date)
-old = create_df_with_zeroes(df, beg_date.shift(weeks=-1), end_date, lambda a: a.shift(years=-1))
-real_smoothed = smooth_df(real, beg_date, last_data_date)
-old_smoothed = smooth_df(old, beg_date, end_date)
-
-percent = compare_df(real_smoothed, old_smoothed, beg_date, now)
-forecast = increase_df(old_smoothed, percent, now.shift(days=1), end_date)
-
-real.insert(len(real.columns), 'smoothed', real_smoothed)
-real.insert(len(real.columns), 'old', old_smoothed)
-real.insert(len(real.columns), 'forecast', forecast)
-
-real.columns = ['this_year_sales', 'this_year_sales_smoothed', 'past_year_sales_smoothed', 'forecast']
-
-real.plot(title='Winston')
+today = arrow.get(2020, 1, 26)  # MUST be less or equal to last_data_date
+forecast_before_date = today.shift(months=1)
+df = get_daily_sales_by_barcode(48742245)
+forecast_data = get_forecast(df, today, forecast_before_date)
+forecast_data.plot(title='Parliament')
 plt.show()
