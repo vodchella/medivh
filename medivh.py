@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from arrow import Arrow
 import matplotlib.pyplot as plt
-from pandas import Series, DataFrame
+from pandas import DataFrame
 from sqlalchemy import create_engine
 from typing import List, Callable, Union
 
@@ -67,7 +67,10 @@ def compare_df(new_df: DataFrame, old_df: DataFrame, beg: Arrow, end: Arrow) -> 
     for day in Arrow.range('day', beg, end):
         new_val = new_df.loc[day.date()].values[0]
         old_val = old_df.loc[day.date()].values[0]
-        percent_diff = 100 - (old_val * 100 / new_val)
+        if new_val != 0.0:
+            percent_diff = 100 - (old_val * 100 / new_val)
+        else:
+            percent_diff = 100 if old_val != 0.0 else 0
         arr.append(percent_diff)
     return float(np.mean(arr))
 
@@ -91,7 +94,7 @@ for_date = last_data_date.shift(months=1)
 
 beg_date = last_data_date.shift(months=-1)
 end_date = for_date
-df = get_daily_sales_by_barcode(48743587)
+df = get_daily_sales_by_barcode(5449000133328)
 
 real = create_df_with_zeroes(df, beg_date.shift(weeks=-1), end_date)
 old = create_df_with_zeroes(df, beg_date.shift(weeks=-1), end_date, lambda a: a.shift(years=-1))
@@ -107,5 +110,5 @@ real.insert(len(real.columns), 'forecast', forecast)
 
 real.columns = ['this_year_sales', 'this_year_sales_smoothed', 'past_year_sales_smoothed', 'forecast']
 
-real.plot()
+real.plot(title='Coca Cola')
 plt.show()
