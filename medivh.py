@@ -10,12 +10,12 @@ from typing import List, Callable, Union
 IDX_COL = 'date_idx'
 
 
-def get_daily_sales_by_barcode(barcode: int) -> DataFrame:
+def get_daily_sales_by_barcode(store_id: int, code: int) -> DataFrame:
     engine = create_engine('mysql+mysqlconnector://root:root@localhost/medivh')
     data = pd.read_sql(f'select date as date_idx, '
                        f'       quantity '
                        f'from   medivh.sales__by_day '
-                       f'where  barcode = {barcode}', con=engine)
+                       f'where  barcode = {code} and store_id = {store_id}', con=engine)
     return create_df_indexed_by_date(data)
 
 
@@ -114,10 +114,10 @@ products = {
 }
 
 
-barcode = 8887290101004
+barcode = 4870204391510
 today = arrow.get(2020, 1, 26)  # MUST be less or equal to last_data_date
 forecast_before_date = today.shift(months=1)
-df = get_daily_sales_by_barcode(barcode)
+df = get_daily_sales_by_barcode(1, barcode)
 forecast_data = get_forecast(df, today, forecast_before_date)
 forecast_data.plot(title=products[barcode])
 plt.show()
