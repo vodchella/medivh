@@ -53,32 +53,37 @@ def create_array_with_zeroes(data_frame: DataFrame, beg: Arrow, end: Arrow) -> L
     return arr
 
 
-def smooth_df(data_frame: DataFrame, beg: Arrow, end: Arrow):
-    # Simple moving average algorithm
-    arr = []
-    for day in Arrow.range('day', beg, end):
-        past_week = create_array_with_zeroes(data_frame, day.shift(days=-6), day)
-        arr.append([day.date(), float(np.mean(past_week))])
-    return create_df_indexed_by_date(DataFrame(arr, columns=[IDX_COL, 'quantity']))
-
-
-def compare_df(new_df: DataFrame, old_df: DataFrame, beg: Arrow, end: Arrow) -> float:
+def compare_df(new_df: DataFrame, old_df: DataFrame, beg: Arrow, end: Arrow):
     new_mean = new_df.loc[beg.date():end.date()].mean().values[0]
     old_mean = old_df.loc[beg.date():end.date()].mean().values[0]
     if old_mean != 0.0:
         percent_diff = (new_mean * 100 / old_mean) - 100
+        diff = new_mean - old_mean
     else:
         raise Exception('No data for past year')
-    return percent_diff
+    return percent_diff, diff
+
+
+def modify_df(beg: Arrow, end: Arrow, modifier: Callable):
+    arr = []
+    for day in Arrow.range('day', beg, end):
+        arr.append([day.date(), modifier(day)])
+    return create_df_indexed_by_date(DataFrame(arr, columns=[IDX_COL, 'quantity']))
+
+
+def smooth_df(data_frame: DataFrame, beg: Arrow, end: Arrow):
+    def fn(day):
+        # Simple moving average algorithm
+        past_week = create_array_with_zeroes(data_frame, day.shift(days=-6), day)
+        return float(np.mean(past_week))
+    return modify_df(beg, end, fn)
 
 
 def increase_df(data_frame: DataFrame, inc_percent: float, beg: Arrow, end: Arrow):
-    arr = []
-    for day in Arrow.range('day', beg, end):
+    def fn(day):
         val = data_frame.loc[day.date()].values[0]
-        new_val = val + (val * inc_percent / 100)
-        arr.append([day.date(), new_val])
-    return create_df_indexed_by_date(DataFrame(arr, columns=[IDX_COL, 'quantity']))
+        return val + (val * inc_percent / 100)
+    return modify_df(beg, end, fn)
 
 
 def get_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow) -> DataFrame:
@@ -92,13 +97,12 @@ def get_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow) -> DataFram
     real_smoothed = smooth_df(real, beg_date, last_data_date)
     old_smoothed = smooth_df(old, beg_date, end_date)
 
-    percent = compare_df(real_smoothed, old_smoothed, now.shift(days=1), end_date)
+    percent, diff = compare_df(real_smoothed, old_smoothed, now.shift(days=1), end_date)
     forecast = increase_df(old_smoothed, percent, now.shift(days=1), end_date)
 
-    result = real
+    result = real_smoothed
     result.columns = ['this_year_sales']
-    result.insert(len(result.columns), 'this_year_sales_smoothed', real_smoothed)
-    result.insert(len(result.columns), 'past_year_sales_smoothed', old_smoothed)
+    result.insert(len(result.columns), 'past_year_sales', old_smoothed)
     result.insert(len(result.columns), 'forecast', forecast)
 
     return result
@@ -117,7 +121,7 @@ products = {
 barcode = 4870204391510
 today = arrow.get(2020, 1, 26)  # MUST be less or equal to last_data_date
 forecast_before_date = today.shift(months=1)
-df = get_daily_sales_by_barcode(1, barcode)
-forecast_data = get_forecast(df, today, forecast_before_date)
+dframe = get_daily_sales_by_barcode(1, barcode)
+forecast_data = get_forecast(dframe, today, forecast_before_date)
 forecast_data.plot(title=products[barcode])
 plt.show()
