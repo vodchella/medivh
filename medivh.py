@@ -86,6 +86,13 @@ def increase_df(data_frame: DataFrame, inc_percent: float, beg: Arrow, end: Arro
     return modify_df(beg, end, fn)
 
 
+def shift_df(data_frame: DataFrame, shift: float, beg: Arrow, end: Arrow):
+    def fn(day):
+        val = data_frame.loc[day.date()].values[0]
+        return val + shift
+    return modify_df(beg, end, fn)
+
+
 def get_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow) -> DataFrame:
     last_data_date = arrow.get(data_frame.index.max())
 
@@ -98,7 +105,8 @@ def get_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow) -> DataFram
     old_smoothed = smooth_df(old, beg_date, end_date)
 
     percent, diff = compare_df(real_smoothed, old_smoothed, now.shift(days=1), end_date)
-    forecast = increase_df(old_smoothed, percent, now.shift(days=1), end_date)
+    # forecast = increase_df(old_smoothed, percent, now.shift(days=1), end_date)
+    forecast = shift_df(old_smoothed, diff, now.shift(days=1), end_date)
 
     result = real_smoothed
     result.columns = ['this_year_sales']
