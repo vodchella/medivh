@@ -93,27 +93,32 @@ def shift_df(data_frame: DataFrame, shift: float, beg: Arrow, end: Arrow):
     return modify_df(beg, end, fn)
 
 
-def get_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow) -> DataFrame:
-    last_data_date = arrow.get(data_frame.index.max())
+def get_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow, only_forecast: bool = True) -> DataFrame:
+    if not data_frame.empty:
+        last_data_date = arrow.get(data_frame.index.max())
 
-    beg_date = now.shift(months=-1)
-    end_date = for_date
+        beg_date = now.shift(months=-1)
+        end_date = for_date
 
-    real = create_df_with_zeroes(data_frame, beg_date.shift(weeks=-1), end_date)
-    old = create_df_with_zeroes(data_frame, beg_date.shift(weeks=-1), end_date, lambda a: a.shift(years=-1))
-    real_smoothed = smooth_df(real, beg_date, last_data_date)
-    old_smoothed = smooth_df(old, beg_date, end_date)
+        real = create_df_with_zeroes(data_frame, beg_date.shift(weeks=-1), end_date)
+        old = create_df_with_zeroes(data_frame, beg_date.shift(weeks=-1), end_date, lambda a: a.shift(years=-1))
+        real_smoothed = smooth_df(real, beg_date, last_data_date)
+        old_smoothed = smooth_df(old, beg_date, end_date)
 
-    percent, diff = compare_df(real_smoothed, old_smoothed, now.shift(days=1), end_date)
-    # forecast = increase_df(old_smoothed, percent, now.shift(days=1), end_date)
-    forecast = shift_df(old_smoothed, diff, now.shift(days=1), end_date)
+        percent, diff = compare_df(real_smoothed, old_smoothed, now.shift(days=1), end_date)
+        # forecast = increase_df(old_smoothed, percent, now.shift(days=1), end_date)
+        forecast = shift_df(old_smoothed, diff, now.shift(days=1), end_date)
 
-    result = real_smoothed
-    result.columns = ['this_year_sales']
-    result.insert(len(result.columns), 'past_year_sales', old_smoothed)
-    result.insert(len(result.columns), 'forecast', forecast)
-
-    return result
+        if only_forecast:
+            return forecast
+        else:
+            result = real_smoothed
+            result.columns = ['this_year_sales']
+            result.insert(len(result.columns), 'past_year_sales', old_smoothed)
+            result.insert(len(result.columns), 'forecast', forecast)
+            return result
+    else:
+        raise Exception('Empty data frame')
 
 
 products = {
@@ -126,10 +131,12 @@ products = {
 }
 
 
-barcode = 4870204391510
+barcode = 48743587
 today = arrow.get(2020, 1, 26)  # MUST be less or equal to last_data_date
 forecast_before_date = today.shift(months=1)
+
 dframe = get_daily_sales_by_barcode(1, barcode)
-forecast_data = get_forecast(dframe, today, forecast_before_date)
+forecast_data = get_forecast(dframe, today, forecast_before_date, False)
+
 forecast_data.plot(title=products[barcode])
 plt.show()
