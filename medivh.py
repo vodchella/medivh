@@ -14,7 +14,7 @@ def get_daily_sales_by_barcode(store_id: int, code: int) -> DataFrame:
     engine = create_engine('mysql+mysqlconnector://root:root@localhost/medivh')
     data = pd.read_sql(f'select date as date_idx, '
                        f'       quantity '
-                       f'from   medivh.sales__by_day '
+                       f'from   medivh.sales__by_barcode_by_day '
                        f'where  barcode = {code} and store_id = {store_id}', con=engine)
     return create_df_indexed_by_date(data)
 
