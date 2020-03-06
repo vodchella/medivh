@@ -145,9 +145,10 @@ products = {
 }
 
 
-barcode = 8887290101004
+barcode = 4870204391510
 store_id = 1
 today = arrow.get(2020, 1, 26)  # MUST be less or equal to last_data_date
+tomorrow = today.shift(days=1)
 forecast_before_date = today.shift(months=1)
 
 dframe = get_barcode_daily_sales(store_id, barcode)
@@ -156,14 +157,20 @@ base_forecast = get_forecast(dframe, today, forecast_before_date, False)
 dframe = get_category_daily_sales(store_id, barcode)
 category_forecast = get_forecast(dframe, today, forecast_before_date, True)
 
-one = base_forecast['forecast'][today.shift(days=1).date():forecast_before_date.date()]
+one = base_forecast['forecast'][tomorrow.date():forecast_before_date.date()]
 two = category_forecast['quantity']
 corr = one.corr(two)
 if corr >= 0.75:
     print(f'Correlation {corr}, use categories for forecast')
-    percent, _ = compare_df(base_forecast[['forecast']], category_forecast, today.shift(days=1), forecast_before_date)
-    category_forecast_normalized = increase_df(category_forecast, percent, today.shift(days=1), forecast_before_date)
-    base_forecast.insert(len(base_forecast.columns), 'forecast_for_category', category_forecast_normalized)
+    forecast = base_forecast[['forecast']]
+    forecast.columns = ['quantity']
+    percent, _ = compare_df(forecast, category_forecast, tomorrow, forecast_before_date)
+    category_forecast_normalized = increase_df(category_forecast, percent, tomorrow, forecast_before_date)
+    combined = pd.concat([forecast, category_forecast_normalized])
+    by_row_index = combined.groupby(combined.index)
+    mean_forecast = by_row_index.mean()
+    base_forecast.drop('forecast', 'columns', inplace=True)
+    base_forecast.insert(len(base_forecast.columns), 'forecast', mean_forecast)
 
 base_forecast.plot(title=products[barcode])
 plt.show()
