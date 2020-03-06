@@ -10,12 +10,27 @@ from typing import List, Callable, Union
 IDX_COL = 'date_idx'
 
 
-def get_daily_sales_by_barcode(store_id: int, code: int) -> DataFrame:
+def get_barcode_daily_sales(store_id: int, code: int) -> DataFrame:
     engine = create_engine('mysql+mysqlconnector://root:root@localhost/medivh')
     data = pd.read_sql(f'select date as date_idx, '
                        f'       quantity '
                        f'from   medivh.sales__by_barcode_by_day '
                        f'where  barcode = {code} and store_id = {store_id}', con=engine)
+    return create_df_indexed_by_date(data)
+
+
+def get_category_daily_sales(store_id: int, code: int) -> DataFrame:
+    engine = create_engine('mysql+mysqlconnector://root:root@localhost/medivh')
+    data = pd.read_sql(f'select sc.date as date_idx, '
+                       f'       sc.quantity '
+                       f'from   medivh.sales__by_category_by_day sc '
+                       f'where  sc.store_id = {store_id} and '
+                       f'       sc.category_id = (select p.category_id '
+                       f'                         from   medivh.product p '
+                       f'                         where  p.barcode = {code} and '
+                       f'                                p.store_group_id = (select s.store_group_id '
+                       f'                                                    from   medivh.store s '
+                       f'                                                    where  s.id = sc.store_id)) ', con=engine)
     return create_df_indexed_by_date(data)
 
 
@@ -105,8 +120,7 @@ def get_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow, only_foreca
         real_smoothed = smooth_df(real, beg_date, last_data_date)
         old_smoothed = smooth_df(old, beg_date, end_date)
 
-        percent, diff = compare_df(real_smoothed, old_smoothed, now.shift(days=1), end_date)
-        # forecast = increase_df(old_smoothed, percent, now.shift(days=1), end_date)
+        _, diff = compare_df(real_smoothed, old_smoothed, now.shift(days=1), end_date)
         forecast = shift_df(old_smoothed, diff, now.shift(days=1), end_date)
 
         if only_forecast:
@@ -131,12 +145,25 @@ products = {
 }
 
 
-barcode = 48743587
+barcode = 8887290101004
+store_id = 1
 today = arrow.get(2020, 1, 26)  # MUST be less or equal to last_data_date
 forecast_before_date = today.shift(months=1)
 
-dframe = get_daily_sales_by_barcode(1, barcode)
-forecast_data = get_forecast(dframe, today, forecast_before_date, False)
+dframe = get_barcode_daily_sales(store_id, barcode)
+base_forecast = get_forecast(dframe, today, forecast_before_date, False)
 
-forecast_data.plot(title=products[barcode])
+dframe = get_category_daily_sales(store_id, barcode)
+category_forecast = get_forecast(dframe, today, forecast_before_date, True)
+
+one = base_forecast['forecast'][today.shift(days=1).date():forecast_before_date.date()]
+two = category_forecast['quantity']
+corr = one.corr(two)
+if corr >= 0.75:
+    print(f'Correlation {corr}, use categories for forecast')
+    percent, _ = compare_df(base_forecast[['forecast']], category_forecast, today.shift(days=1), forecast_before_date)
+    category_forecast_normalized = increase_df(category_forecast, percent, today.shift(days=1), forecast_before_date)
+    base_forecast.insert(len(base_forecast.columns), 'forecast_for_category', category_forecast_normalized)
+
+base_forecast.plot(title=products[barcode])
 plt.show()
