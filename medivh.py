@@ -130,17 +130,20 @@ def get_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow, only_foreca
         real_smoothed = smooth_df(real, beg_date, last_data_date)
         old_smoothed = smooth_df(old, beg_date, end_date)
 
-        _, diff = compare_df(real_smoothed, old_smoothed, now.shift(days=1), end_date)
-        forecast = shift_df(old_smoothed, diff, now.shift(days=1), end_date)
+        if not real_smoothed.empty:
+            _, diff = compare_df(real_smoothed, old_smoothed, now.shift(days=1), end_date)
+            result_forecast = shift_df(old_smoothed, diff, now.shift(days=1), end_date)
 
-        if only_forecast:
-            return forecast
+            if only_forecast:
+                return result_forecast
+            else:
+                result = real_smoothed
+                result.columns = ['this_year_sales']
+                result.insert(len(result.columns), 'past_year_sales', old_smoothed)
+                result.insert(len(result.columns), 'forecast', result_forecast)
+                return result
         else:
-            result = real_smoothed
-            result.columns = ['this_year_sales']
-            result.insert(len(result.columns), 'past_year_sales', old_smoothed)
-            result.insert(len(result.columns), 'forecast', forecast)
-            return result
+            return real_smoothed  # Return empty data frame
     else:
         raise Exception('Empty data frame')
 
@@ -155,9 +158,10 @@ products = {
 }
 
 
-barcode = 48743587
-store_id = 110
-today = arrow.get(2020, 1, 26)  # MUST be less or equal to last_data_date
+barcode = 8887290101004
+store_id = 1
+# today = arrow.get(2020, 1, 26)  # MUST be less or equal to last_data_date
+today = arrow.get(2021, 3, 10)
 tomorrow = today.shift(days=1)
 forecast_before_date = today.shift(months=1)
 
@@ -167,17 +171,21 @@ base_forecast = get_forecast(dframe, today, forecast_before_date, False)
 dframe = get_category_daily_sales(store_id, barcode)
 category_forecast = get_forecast(dframe, today, forecast_before_date, True)
 
-one = base_forecast['forecast'][tomorrow.date():forecast_before_date.date()]
-two = category_forecast['quantity']
-if is_series_correlated(one, two):
-    print(f'Correlation, use categories for forecast')
-    forecast = base_forecast[['forecast']]
-    forecast.columns = ['quantity']
-    percent, _ = compare_df(forecast, category_forecast, tomorrow, forecast_before_date)
-    category_forecast_normalized = increase_df(category_forecast, percent, tomorrow, forecast_before_date)
-    mean_forecast = merge_df(forecast, category_forecast_normalized)
-    base_forecast.drop('forecast', 'columns', inplace=True)
-    base_forecast.insert(len(base_forecast.columns), 'forecast', mean_forecast)
+if not (base_forecast.empty and category_forecast.empty):
+    one = base_forecast['forecast'][tomorrow.date():forecast_before_date.date()]
+    two = category_forecast['quantity']
+    if is_series_correlated(one, two):
+        print(f'Correlation, use categories for forecast')
+        forecast = base_forecast[['forecast']]
+        forecast.columns = ['quantity']
+        percent, _ = compare_df(forecast, category_forecast, tomorrow, forecast_before_date)
+        category_forecast_normalized = increase_df(category_forecast, percent, tomorrow, forecast_before_date)
+        mean_forecast = merge_df(forecast, category_forecast_normalized)
+        base_forecast.drop('forecast', 'columns', inplace=True)
+        base_forecast.insert(len(base_forecast.columns), 'forecast *', mean_forecast)
 
-base_forecast.plot(title=products[barcode])
-plt.show()
+try:
+    base_forecast.plot(title=products[barcode])
+    plt.show()
+except TypeError:
+    print('No data to plot')
