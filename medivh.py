@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from arrow import Arrow
 import matplotlib.pyplot as plt
-from pandas import DataFrame
+from pandas import DataFrame, Series
 from sqlalchemy import create_engine
 from typing import List, Callable, Union
 
@@ -114,6 +114,10 @@ def merge_df(first: DataFrame, second: DataFrame):
     return by_row_index.mean()
 
 
+def is_series_correlated(first: Series, second: Series):
+    return first.corr(second) >= 0.75
+
+
 def get_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow, only_forecast: bool = True) -> DataFrame:
     if not data_frame.empty:
         last_data_date = arrow.get(data_frame.index.max())
@@ -165,9 +169,8 @@ category_forecast = get_forecast(dframe, today, forecast_before_date, True)
 
 one = base_forecast['forecast'][tomorrow.date():forecast_before_date.date()]
 two = category_forecast['quantity']
-corr = one.corr(two)
-if corr >= 0.75:
-    print(f'Correlation {corr}, use categories for forecast')
+if is_series_correlated(one, two):
+    print(f'Correlation, use categories for forecast')
     forecast = base_forecast[['forecast']]
     forecast.columns = ['quantity']
     percent, _ = compare_df(forecast, category_forecast, tomorrow, forecast_before_date)
