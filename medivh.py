@@ -118,7 +118,7 @@ def is_series_correlated(first: Series, second: Series):
     return first.corr(second) >= 0.75
 
 
-def get_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow, only_forecast: bool = True) -> DataFrame:
+def get_barcode_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow) -> DataFrame:
     if not data_frame.empty:
         last_data_date = arrow.get(data_frame.index.max())
 
@@ -134,18 +134,41 @@ def get_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow, only_foreca
             _, diff = compare_df(real_smoothed, old_smoothed, now.shift(days=1), end_date)
             result_forecast = shift_df(old_smoothed, diff, now.shift(days=1), end_date)
 
-            if only_forecast:
-                return result_forecast
-            else:
-                result = real_smoothed
-                result.columns = ['this_year_sales']
-                result.insert(len(result.columns), 'past_year_sales', old_smoothed)
-                result.insert(len(result.columns), 'forecast', result_forecast)
-                return result
+            result = real_smoothed
+            result.columns = ['this_year_sales']
+            result.insert(len(result.columns), 'past_year_sales', old_smoothed)
+            result.insert(len(result.columns), 'forecast', result_forecast)
+            return result
         else:
             return real_smoothed  # Return empty data frame
     else:
         raise Exception('Empty data frame')
+
+
+def get_category_forecast(barcode_data_frame: DataFrame, category_data_frame: DataFrame, now: Arrow, for_date: Arrow):
+    tomorrow = now.shift(days=1)
+    past_month = now.shift(months=-1)
+
+    barcode_df = create_df_with_zeroes(barcode_data_frame, past_month, now)
+    barcode_smoothed = smooth_df(barcode_df, past_month, now)
+    category_df = create_df_with_zeroes(category_data_frame, past_month, for_date, lambda a: a.shift(years=-1))
+    category_smoothed = smooth_df(category_df, past_month, for_date)
+
+    barcode_series = barcode_smoothed['quantity'][past_month.date():now.date()]
+    category_series = category_smoothed['quantity'][past_month.date():now.date()]
+    if is_series_correlated(barcode_series, category_series):
+        percent, _ = compare_df(barcode_series.to_frame(), category_series.to_frame(), past_month, now)
+        forecast = category_smoothed['quantity'][tomorrow.date():for_date.date()]
+        forecast_normalized = increase_df(forecast.to_frame(), percent, tomorrow, for_date)
+
+        result = category_smoothed
+        result.columns = ['past_year_category_sales']
+        result.insert(len(result.columns), 'past_month_product_sales', barcode_smoothed)
+        result.insert(len(result.columns), 'forecast', forecast_normalized)
+
+        return result
+    else:
+        print('No correlation with past year category sales, forecast impossible')
 
 
 products = {
@@ -161,67 +184,21 @@ products = {
 barcode = 8887290101004
 store_id = 1
 today = arrow.get(2020, 1, 25)
-tomorrow = today.shift(days=1)
-past_month = today.shift(months=-1)
 forecast_before_date = today.shift(months=1)
 
 df_barcode = get_barcode_daily_sales(store_id, barcode)
 df_category = get_category_daily_sales(store_id, barcode)
 
-use_categories = True
-barcode_forecast = get_forecast(df_barcode, today, forecast_before_date, False)
-if not barcode_forecast.empty:
-    barcode_series = barcode_forecast['forecast'][tomorrow.date():forecast_before_date.date()]
-    if not barcode_series.empty:
+barcode_forecast = get_barcode_forecast(df_barcode, today, forecast_before_date)
+try:
+    barcode_forecast.plot(title=products[barcode])
+    plt.show()
+except TypeError:
+    print('[1] No data to plot')
 
-        # We have forecast based on past year product sales,
-        # Let's do other work
-
-        # use_categories = False
-        plot_data = barcode_forecast
-        category_forecast = get_forecast(df_category, today, forecast_before_date, True)
-        category_series = category_forecast['quantity']
-        if is_series_correlated(barcode_series, category_series):
-            forecast = barcode_forecast[['forecast']]
-            forecast.columns = ['quantity']
-            percent, _ = compare_df(forecast, category_forecast, tomorrow, forecast_before_date)
-            category_forecast_normalized = increase_df(category_forecast, percent, tomorrow, forecast_before_date)
-            mean_forecast = merge_df(forecast, category_forecast_normalized)
-            plot_data.drop('forecast', 'columns', inplace=True)
-            plot_data.insert(len(plot_data.columns), 'forecast *', mean_forecast)
-
-        try:
-            plot_data.plot(title=products[barcode])
-            plt.show()
-        except TypeError:
-            print('No data to plot')
-
-if use_categories:
-
-    # We don't have forecast based on past year product sales,
-    # Let's try past year category sales
-
-    barcode_df = create_df_with_zeroes(df_barcode, past_month, today)
-    barcode_smoothed = smooth_df(barcode_df, past_month, today)
-    category_df = create_df_with_zeroes(df_category, past_month, forecast_before_date, lambda a: a.shift(years=-1))
-    category_smoothed = smooth_df(category_df, past_month, forecast_before_date)
-
-    barcode_series = barcode_smoothed['quantity'][past_month.date():today.date()]
-    category_series = category_smoothed['quantity'][past_month.date():today.date()]
-    if is_series_correlated(barcode_series, category_series):
-        percent, _ = compare_df(barcode_series.to_frame(), category_series.to_frame(), past_month, today)
-        category_forecast = category_smoothed['quantity'][tomorrow.date():forecast_before_date.date()]
-        category_forecast_normalized = increase_df(category_forecast.to_frame(), percent, tomorrow, forecast_before_date)
-
-        plot_data = category_smoothed
-        plot_data.columns = ['past_year_category_sales']
-        plot_data.insert(len(plot_data.columns), 'past_month_product_sales', barcode_smoothed)
-        plot_data.insert(len(plot_data.columns), 'forecast ^', category_forecast_normalized)
-
-        try:
-            plot_data.plot(title=products[barcode])
-            plt.show()
-        except TypeError:
-            print('No data to plot')
-    else:
-        print('No correlation with past year category sales, forecast impossible')
+category_forecast = get_category_forecast(df_barcode, df_category, today, forecast_before_date)
+try:
+    category_forecast.plot(title=products[barcode])
+    plt.show()
+except TypeError:
+    print('[2] No data to plot')
