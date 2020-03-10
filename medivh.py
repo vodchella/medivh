@@ -108,6 +108,12 @@ def shift_df(data_frame: DataFrame, shift: float, beg: Arrow, end: Arrow):
     return modify_df(beg, end, fn)
 
 
+def merge_df(first: DataFrame, second: DataFrame):
+    combined = pd.concat([first, second])
+    by_row_index = combined.groupby(combined.index)
+    return by_row_index.mean()
+
+
 def get_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow, only_forecast: bool = True) -> DataFrame:
     if not data_frame.empty:
         last_data_date = arrow.get(data_frame.index.max())
@@ -145,8 +151,8 @@ products = {
 }
 
 
-barcode = 4870204391510
-store_id = 1
+barcode = 48743587
+store_id = 110
 today = arrow.get(2020, 1, 26)  # MUST be less or equal to last_data_date
 tomorrow = today.shift(days=1)
 forecast_before_date = today.shift(months=1)
@@ -166,9 +172,7 @@ if corr >= 0.75:
     forecast.columns = ['quantity']
     percent, _ = compare_df(forecast, category_forecast, tomorrow, forecast_before_date)
     category_forecast_normalized = increase_df(category_forecast, percent, tomorrow, forecast_before_date)
-    combined = pd.concat([forecast, category_forecast_normalized])
-    by_row_index = combined.groupby(combined.index)
-    mean_forecast = by_row_index.mean()
+    mean_forecast = merge_df(forecast, category_forecast_normalized)
     base_forecast.drop('forecast', 'columns', inplace=True)
     base_forecast.insert(len(base_forecast.columns), 'forecast', mean_forecast)
 
