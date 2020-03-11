@@ -181,8 +181,8 @@ products = {
 }
 
 
-barcode = 8887290101004
-store_id = 1
+barcode = 48743587
+store_id = 110
 today = arrow.get(2020, 1, 25)
 forecast_before_date = today.shift(months=1)
 
@@ -190,15 +190,17 @@ df_barcode = get_barcode_daily_sales(store_id, barcode)
 df_category = get_category_daily_sales(store_id, barcode)
 
 barcode_forecast = get_barcode_forecast(df_barcode, today, forecast_before_date)
-try:
-    barcode_forecast.plot(title=products[barcode])
-    plt.show()
-except TypeError:
-    print('[1] No data to plot')
+if barcode_forecast is not None:
+    try:
+        barcode_forecast.plot(title=products[barcode])
+        plt.show()
+    except TypeError:
+        print('[1] no data to plot')
 
 category_forecast = get_category_forecast(df_barcode, df_category, today, forecast_before_date)
-try:
-    category_forecast.plot(title=products[barcode])
-    plt.show()
-except TypeError:
-    print('[2] No data to plot')
+if category_forecast is not None:
+    try:
+        category_forecast.plot(title=products[barcode])
+        plt.show()
+    except TypeError:
+        print('[2] No data to plot')
