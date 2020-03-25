@@ -1,11 +1,11 @@
 import arrow
 from arrow import Arrow
-from pandas import DataFrame
+from pandas import DataFrame, Series
 from pkg.utils.df import create_df_with_zeroes, smooth_df, compare_df, shift_df, increase_df
 from pkg.utils.series import is_series_correlated
 
 
-def get_barcode_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow) -> DataFrame:
+def get_barcode_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow) -> Series:
     if not data_frame.empty:
         last_data_date = arrow.get(data_frame.index.max())
 
@@ -20,19 +20,17 @@ def get_barcode_forecast(data_frame: DataFrame, now: Arrow, for_date: Arrow) -> 
         if not real_smoothed.empty:
             _, diff = compare_df(real_smoothed, old_smoothed, now.shift(days=1), end_date)
             result_forecast = shift_df(old_smoothed, diff, now.shift(days=1), end_date)
-
-            result = real_smoothed
-            result.columns = ['this_year_sales']
-            result.insert(len(result.columns), 'past_year_sales', old_smoothed)
-            result.insert(len(result.columns), 'forecast', result_forecast)
-            return result
+            return result_forecast['quantity'][now.date():for_date.date()]
         else:
-            return real_smoothed  # Return empty data frame
+            raise Exception('Empty data frame')
     else:
         raise Exception('Empty data frame')
 
 
-def get_category_forecast(barcode_data_frame: DataFrame, category_data_frame: DataFrame, now: Arrow, for_date: Arrow):
+def get_category_forecast(barcode_data_frame: DataFrame,
+                          category_data_frame: DataFrame,
+                          now: Arrow,
+                          for_date: Arrow) -> Series:
     tomorrow = now.shift(days=1)
     past_month = now.shift(months=-1)
 
@@ -47,12 +45,6 @@ def get_category_forecast(barcode_data_frame: DataFrame, category_data_frame: Da
         percent, _ = compare_df(barcode_series.to_frame(), category_series.to_frame(), past_month, now)
         forecast = category_smoothed['quantity'][tomorrow.date():for_date.date()]
         forecast_normalized = increase_df(forecast.to_frame(), percent, tomorrow, for_date)
-
-        result = category_smoothed
-        result.columns = ['past_year_category_sales']
-        result.insert(len(result.columns), 'past_month_product_sales', barcode_smoothed)
-        result.insert(len(result.columns), 'forecast', forecast_normalized)
-
-        return result
+        return forecast_normalized['quantity'][now.date():for_date.date()]
     else:
         print('No correlation with past year category sales, forecast impossible')
