@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from pkg.data import get_barcode_daily_sales, get_category_daily_sales
 from pkg.forecast import get_barcode_forecast, get_category_forecast
 from pkg.utils.df import create_df_with_zeroes, smooth_df
+from pkg.utils.series import get_series_correlation
 from sqlalchemy import create_engine
 
 
@@ -28,13 +29,18 @@ df_category = get_category_daily_sales(engine, store_id, barcode)
 real_sales = smooth_df(create_df_with_zeroes(df_barcode, forecast_from_date, forecast_before_date),
                        forecast_from_date,
                        forecast_before_date)
+sales_series = real_sales['quantity'][forecast_from_date.date():forecast_before_date.date()]
 
 barcode_forecast = get_barcode_forecast(df_barcode, forecast_from_date, forecast_before_date)
 if barcode_forecast is not None:
+    print('First forecast:')
+    print('... correlation: ', get_series_correlation(sales_series, barcode_forecast))
     real_sales.insert(len(real_sales.columns), 'forecast_1', barcode_forecast)
 
 category_forecast = get_category_forecast(df_barcode, df_category, forecast_from_date, forecast_before_date)
 if category_forecast is not None:
+    print('Second forecast:')
+    print('... correlation: ', get_series_correlation(sales_series, category_forecast))
     real_sales.insert(len(real_sales.columns), 'forecast_2', category_forecast)
 
 real_sales.plot(title=products[barcode])
