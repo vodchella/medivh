@@ -1,3 +1,4 @@
+import numpy as np
 from pandas import Series
 
 
@@ -16,4 +17,4 @@ def get_series_accuracy(first: Series, second: Series):
         diff = abs(fval - sval)
         perc = 100.0 - min(diff * 100 / fval, 100.0)
         arr.append(perc)
-    return Series(arr).median()
+    return np.median(arr)
