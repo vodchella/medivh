@@ -41,10 +41,10 @@ def get_category_forecast(barcode_data_frame: DataFrame,
 
     barcode_series = barcode_smoothed['quantity'][past_month.date():now.date()]
     category_series = category_smoothed['quantity'][past_month.date():now.date()]
-    if is_series_correlated(barcode_series, category_series):
-        percent, _ = compare_df(barcode_series.to_frame(), category_series.to_frame(), past_month, now)
-        forecast = category_smoothed['quantity'][tomorrow.date():for_date.date()]
-        forecast_normalized = increase_df(forecast.to_frame(), percent, tomorrow, for_date)
-        return forecast_normalized['quantity'][now.date():for_date.date()]
-    else:
-        print('No correlation with past year category sales, forecast impossible')
+    # if is_series_correlated(barcode_series, category_series):
+    percent, _ = compare_df(barcode_series.to_frame(), category_series.to_frame(), past_month, now)
+    forecast = category_smoothed['quantity'][tomorrow.date():for_date.date()]
+    forecast_normalized = increase_df(forecast.to_frame(), percent, tomorrow, for_date)
+    return forecast_normalized['quantity'][now.date():for_date.date()]
+    # else:
+    #     print('No correlation with past year category sales, forecast impossible')
