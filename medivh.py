@@ -2,7 +2,7 @@ import arrow
 import matplotlib.pyplot as plt
 from pandas import Series
 from pkg.data import get_barcode_daily_sales, get_category_daily_sales
-from pkg.forecast import get_barcode_forecast, get_category_forecast
+from pkg.forecast import get_barcode_forecast, get_category_forecast, get_mean_forecast
 from pkg.utils.df import create_df_with_zeroes, smooth_df
 from pkg.utils.series import get_forecast_accuracy_errors, get_forecast_standard_deviation
 from sqlalchemy import create_engine
@@ -25,7 +25,7 @@ products = {
 }
 
 
-barcode = 4680036912629
+barcode = 8887290101004
 store_id = 1
 forecast_from_date = arrow.get(2019, 5, 25)
 forecast_before_date = forecast_from_date.shift(days=5)
@@ -56,6 +56,15 @@ try:
         real_sales.insert(len(real_sales.columns), 'forecast_2', category_forecast)
 except:
     print('Can\'t get second forecast')
+
+try:
+    mean_forecast = get_mean_forecast(df_barcode, forecast_from_date, forecast_before_date)
+    if mean_forecast is not None:
+        print('Third forecast:')
+        analyze_forecast(sales_series, mean_forecast)
+        real_sales.insert(len(real_sales.columns), 'forecast_3', mean_forecast)
+except:
+    print('Can\'t get third forecast')
 
 real_sales.plot(title=products[barcode])
 plt.show()

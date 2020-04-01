@@ -7,6 +7,10 @@ from typing import List, Callable, Union
 IDX_COL = 'date_idx'
 
 
+def create_df(arr):
+    return DataFrame(arr, columns=[IDX_COL, 'quantity'])
+
+
 def create_df_indexed_by_date(data_frame: DataFrame, index_col: str = IDX_COL) -> DataFrame:
     index = pd.DatetimeIndex(pd.to_datetime(data_frame[index_col]))
     result = data_frame.set_index(index).sort_index()
@@ -27,7 +31,7 @@ def create_df_with_zeroes(data_frame: DataFrame,
         except KeyError:
             value = 0.0
         arr.append([day.date(), value])
-    return create_df_indexed_by_date(DataFrame(arr, columns=[IDX_COL, 'quantity']))
+    return create_df_indexed_by_date(create_df(arr))
 
 
 def create_array_with_zeroes(data_frame: DataFrame, beg: Arrow, end: Arrow) -> List[float]:
@@ -56,7 +60,7 @@ def modify_df(beg: Arrow, end: Arrow, modifier: Callable):
     arr = []
     for day in Arrow.range('day', beg, end):
         arr.append([day.date(), modifier(day)])
-    return create_df_indexed_by_date(DataFrame(arr, columns=[IDX_COL, 'quantity']))
+    return create_df_indexed_by_date(create_df(arr))
 
 
 def smooth_df(data_frame: DataFrame, beg: Arrow, end: Arrow):
