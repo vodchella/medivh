@@ -4,13 +4,13 @@ from pandas import Series
 from pkg.data import get_barcode_daily_sales, get_category_daily_sales
 from pkg.forecast import get_barcode_forecast, get_category_forecast
 from pkg.utils.df import create_df_with_zeroes, smooth_df
-from pkg.utils.series import get_series_accuracy_errors, get_series_standard_deviation
+from pkg.utils.series import get_forecast_accuracy_errors, get_forecast_standard_deviation
 from sqlalchemy import create_engine
 
 
 def analyze_forecast(sales: Series, forecast: Series):
-    accuracy_errors = get_series_accuracy_errors(sales, forecast)
-    standard_deviation = get_series_standard_deviation(sales, forecast)
+    accuracy_errors = get_forecast_accuracy_errors(sales, forecast)
+    standard_deviation = get_forecast_standard_deviation(sales, forecast)
     print(f'... accuracy_errors: {accuracy_errors}%')
     print(f'... standard_deviation: {standard_deviation}')
 
