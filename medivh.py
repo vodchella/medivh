@@ -4,15 +4,17 @@ from pandas import Series
 from pkg.data import get_barcode_daily_sales, get_category_daily_sales
 from pkg.forecast import get_barcode_forecast, get_category_forecast
 from pkg.utils.df import create_df_with_zeroes, smooth_df
-from pkg.utils.series import get_series_correlation, get_series_accuracy_errors
+from pkg.utils.series import get_series_correlation, get_series_accuracy_errors, get_series_standard_deviation
 from sqlalchemy import create_engine
 
 
 def analyze_forecast(sales: Series, forecast: Series):
     correlation = round(get_series_correlation(sales, forecast), 2)
-    accuracy_errors = round(get_series_accuracy_errors(sales, forecast), 2)
+    accuracy_errors = get_series_accuracy_errors(sales, forecast)
+    standard_deviation = get_series_standard_deviation(sales, forecast)
     print(f'... correlation: {correlation}%')
     print(f'... accuracy_errors: {accuracy_errors}%')
+    print(f'... standard_deviation: {standard_deviation}')
 
 
 products = {
@@ -25,7 +27,7 @@ products = {
 }
 
 
-barcode = 5449000133328
+barcode = 4680036912629
 store_id = 110
 forecast_from_date = arrow.get(2020, 1, 25)
 forecast_before_date = forecast_from_date.shift(months=1)
