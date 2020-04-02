@@ -80,14 +80,28 @@ if args.config:
                 forecast_from_date = arrow.get(period['date'], 'DD.MM.YYYY')
                 forecast_before_date = forecast_from_date.shift(days=period['days'])
 
+                use_category_forecast = False
                 forecast = 0.0
                 df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
+                # noinspection PyBroadException
                 try:
                     barcode_forecast = get_barcode_forecast(df_barcode, forecast_from_date, forecast_before_date)
                     if barcode_forecast is not None:
                         forecast = barcode_forecast.sum()
+                    else:
+                        use_category_forecast = True
                 except:
-                    pass
+                    use_category_forecast = True
+
+                if use_category_forecast:
+                    df_category = get_category_daily_sales(engine, store_id, barcode)
+                    # noinspection TryExceptPass, PyBroadException
+                    try:
+                        category_forecast = get_category_forecast(df_barcode, df_category, forecast_from_date, forecast_before_date)
+                        if category_forecast is not None:
+                            forecast = category_forecast.sum()
+                    except:
+                        pass
 
                 csv_writer.writerow([store_id, barcode, period['date'], period['days'], round(forecast, 2)])
                 bar.next()
