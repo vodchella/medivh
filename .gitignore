@@ -4,4 +4,4 @@
 .venv*
 __pycache__
 config.yml
-result.csv
+*.csv
