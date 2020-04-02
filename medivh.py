@@ -1,9 +1,12 @@
+#!/usr/bin/env python3
+
+import argparse
 import arrow
 import matplotlib.pyplot as plt
 from pandas import Series
 from pkg.data import get_barcode_daily_sales, get_category_daily_sales
 from pkg.forecast import get_barcode_forecast, get_category_forecast, get_mean_forecast
-from pkg.utils.df import create_df_with_zeroes, smooth_df
+from pkg.utils.df import create_df_with_zeroes
 from pkg.utils.series import get_forecast_accuracy_errors, get_forecast_standard_deviation
 from sqlalchemy import create_engine
 
@@ -14,6 +17,15 @@ def analyze_forecast(sales: Series, forecast: Series):
     print(f'... accuracy_errors: {accuracy_errors}%')
     print(f'... standard_deviation: {standard_deviation}')
 
+
+def create_argparse():
+    parser = argparse.ArgumentParser(description='Sales forecast')
+    parser.add_argument(
+        '-c',
+        '--config',
+        help='Path to config file'
+    )
+    return parser.parse_args()
 
 products = {
     8887290101004: 'Coffee 3 in 1',
@@ -29,6 +41,8 @@ barcode = 48743587
 store_id = 450
 forecast_from_date = arrow.get(2019, 5, 25)
 forecast_before_date = forecast_from_date.shift(days=5)
+
+args = create_argparse()
 
 engine = create_engine('mysql+mysqlconnector://root:root@localhost/medivh')
 df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
