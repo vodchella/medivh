@@ -25,8 +25,8 @@ products = {
 }
 
 
-barcode = 8887290101004
-store_id = 1
+barcode = 48743587
+store_id = 450
 forecast_from_date = arrow.get(2019, 5, 25)
 forecast_before_date = forecast_from_date.shift(days=5)
 
@@ -34,9 +34,7 @@ engine = create_engine('mysql+mysqlconnector://root:root@localhost/medivh')
 df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
 df_category = get_category_daily_sales(engine, store_id, barcode)
 
-real_sales = smooth_df(create_df_with_zeroes(df_barcode, forecast_from_date, forecast_before_date),
-                       forecast_from_date,
-                       forecast_before_date)
+real_sales = create_df_with_zeroes(df_barcode, forecast_from_date, forecast_before_date)
 sales_series = real_sales['quantity'][forecast_from_date.date():forecast_before_date.date()]
 
 try:
