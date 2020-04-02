@@ -4,3 +4,19 @@ mysql:
     user: root
     pass: root
     schema: medivh
+stores:
+    - 1
+    - 110
+    - 450
+barcodes:
+    - 8887290101004
+    - 5449000133328
+    - 4870204391510
+    - 4680036912629
+    - 48742245
+    - 48743587
+periods:
+    - date: 25.05.2019
+      days: 5
+    - date: 01.06.2019
+      days: 5
