@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
-from time import sleep
-
 import arrow
+import csv
 import matplotlib.pyplot as plt
 import yaml
 from pandas import Series
@@ -60,22 +59,41 @@ if args.config:
     engine = create_engine(f'mysql+mysqlconnector://{db_path}')
     print(f'Connected to MySQL at {db_secured_path}\n')
 
+    csv_file = open('result.csv', 'w', newline='')
+    csv_writer = csv.writer(csv_file, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+
     stores = config['stores']
     barcodes = config['barcodes']
     periods = config['periods']
     iter_cnt = len(stores) * len(barcodes) * len(periods)
     bar = ChargingBar('Waiting...', max=iter_cnt)
     bar.start()
+
     for s in range(len(stores)):
         store_id = stores[s]
         for b in range(len(barcodes)):
             barcode = barcodes[b]
-            bar.message = f'[Store: {store_id}] {barcode}'
+            bar.message = f'[Store: {store_id}] {str(barcode).ljust(13, " ")}'
             bar.update()
             for p in range(len(periods)):
-                sleep(1)
+                period = periods[p]
+                forecast_from_date = arrow.get(period['date'], 'DD.MM.YYYY')
+                forecast_before_date = forecast_from_date.shift(days=period['days'])
+
+                forecast = 0.0
+                df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
+                try:
+                    barcode_forecast = get_barcode_forecast(df_barcode, forecast_from_date, forecast_before_date)
+                    if barcode_forecast is not None:
+                        forecast = barcode_forecast.sum()
+                except:
+                    pass
+
+                csv_writer.writerow([store_id, barcode, period['date'], period['days'], round(forecast, 2)])
                 bar.next()
+
     bar.finish()
+    csv_file.close()
 
     # df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
     # df_category = get_category_daily_sales(engine, store_id, barcode)
