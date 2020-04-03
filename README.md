@@ -4,7 +4,7 @@ Medivh
 Get forecasts
 -------------
 * Default algorithm: `./medivh.py -c sample-config.yml -o result-default.csv`
-* Mean algotuthm: `./medivh.py -c sample-config.yml -o result-mean.csv -a mean.csv`
+* Mean algotuthm: `./medivh.py -c sample-config.yml -o result-mean.csv -a mean`
 
 Generate real sales data
 ------------------------
