@@ -49,6 +49,11 @@ def create_argparse():
         nargs='+',
         help='List of files with forecasts'
     )
+    parser.add_argument(
+        '-i',
+        '--image',
+        help='Path to image file with plot result'
+    )
     return parser.parse_args()
 
 
@@ -86,8 +91,8 @@ if __name__ == '__main__':
 
                         df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
 
-                        for p in range(len(periods)):
-                            period = periods[p]
+                        for plot in range(len(periods)):
+                            period = periods[plot]
                             today = arrow.get(period['date'], 'DD.MM.YYYY')
                             beg = today.shift(days=1)
                             end = beg.shift(days=period['days'])
@@ -139,12 +144,17 @@ if __name__ == '__main__':
 
                     print(f'{csv_file}:')
                     print(f'... accuracy errors: {accuracy_errors}%')
-                    print(f'... standard deviation: {standard_deviation}')
+                    print(f'... standard deviation: {standard_deviation}\n')
 
                     df_main = df_main.join(df)
 
-                p = df_main.plot()
-                p.set_xticklabels([])
+                plot = df_main.plot()
+                plot.set_xticklabels([])
+                if args.image:
+                    print('Saving plot...')
+                    fig = plot.get_figure()
+                    fig.savefig(args.image, dpi=512)
+                    print(f'Plot saved to {args.image}')
                 plt.show()
 
             else:
