@@ -5,8 +5,8 @@ import arrow
 import csv
 import yaml
 import sys
-from pkg.data import get_barcode_daily_sales, get_category_daily_sales, create_engine
-from pkg.forecast import get_barcode_forecast, get_category_forecast, get_mean_forecast
+from pkg.data import get_barcode_daily_sales, create_engine
+from pkg.forecast import get_barcode_forecast, get_mean_forecast
 from pkg.utils.console import panic
 from pkg.utils.files import read_file
 from progress.bar import ChargingBar
@@ -68,7 +68,6 @@ if __name__ == '__main__':
                     bar.update()
 
                     df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
-                    df_category = None
 
                     for p in range(len(periods)):
                         period = periods[p]
@@ -78,27 +77,26 @@ if __name__ == '__main__':
                         forecast = 0.0
 
                         if args.algorithm == 'default':
-                            use_category_forecast = False
+                            use_mean_forecast = False
                             # noinspection PyBroadException
                             try:
                                 barcode_forecast = get_barcode_forecast(df_barcode, forecast_from_date, forecast_before_date)
                                 if barcode_forecast is not None:
                                     forecast = barcode_forecast.sum()
                                 else:
-                                    use_category_forecast = True
+                                    use_mean_forecast = True
                             except:
-                                use_category_forecast = True
+                                use_mean_forecast = True
 
-                            if use_category_forecast:
-                                if df_category is None:
-                                    df_category = get_category_daily_sales(engine, store_id, barcode)
+                            if use_mean_forecast:
                                 # noinspection TryExceptPass, PyBroadException
                                 try:
-                                    category_forecast = get_category_forecast(df_barcode, df_category, forecast_from_date, forecast_before_date)
-                                    if category_forecast is not None:
-                                        forecast = category_forecast.sum()
+                                    mean_forecast = get_mean_forecast(df_barcode, forecast_from_date, forecast_before_date)
+                                    if mean_forecast is not None:
+                                        forecast = mean_forecast.sum()
                                 except:
                                     pass
+
                         elif args.algorithm == 'mean':
                             # noinspection TryExceptPass, PyBroadException
                             try:
