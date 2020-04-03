@@ -3,8 +3,10 @@
 import argparse
 import arrow
 import csv
-import yaml
+import pandas as pd
+import matplotlib.pyplot as plt
 import sys
+import yaml
 from pkg.data import get_barcode_daily_sales, create_engine
 from pkg.utils.console import panic
 from pkg.utils.files import read_file
@@ -28,6 +30,23 @@ def create_argparse():
         '--generate',
         action='store_true',
         help='Generate real sales data'
+    )
+    parser.add_argument(
+        '-b',
+        '--benchmark',
+        action='store_true',
+        help='Process benchmark'
+    )
+    parser.add_argument(
+        '-s',
+        '--sales',
+        help='Path to real sales CSV file'
+    )
+    parser.add_argument(
+        '-f',
+        '--forecasts',
+        nargs='+',
+        help='List of files with forecasts'
     )
     return parser.parse_args()
 
@@ -87,6 +106,42 @@ if __name__ == '__main__':
 
         else:
             panic('No config file specified. Use -c option')
+
+    elif args.benchmark:
+        if args.sales:
+            if args.forecasts:
+                index_columns = ['store_id', 'barcode', 'date', 'days']
+                columns = index_columns[:]
+                columns.append('real-sales')
+
+                df_main = pd.read_csv(
+                    args.sales,
+                    sep=' ',
+                    names=columns,
+                    index_col=index_columns
+                )
+
+                for csv_file in args.forecasts:
+                    columns = index_columns[:]
+                    columns.append(csv_file)
+
+                    df = pd.read_csv(
+                        csv_file,
+                        sep=' ',
+                        names=columns,
+                        index_col=index_columns
+                    )
+                    df_main = df_main.join(df)
+
+                p = df_main.plot()
+                p.set_xticklabels([])
+                plt.show()
+
+            else:
+                panic('No files with forecasts specified. Use -f option')
+
+        else:
+            panic('No file with sales specified. Use -s option')
 
     else:
         panic('Nothing to do. Call tester with -h option')
