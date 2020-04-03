@@ -1,16 +1,40 @@
 #!/usr/bin/env python3
 
+import argparse
 import arrow
 import csv
 import yaml
 import sys
 from pkg.data import get_barcode_daily_sales, get_category_daily_sales
 from pkg.forecast import get_barcode_forecast, get_category_forecast, get_mean_forecast
-from pkg.utils.argparse import create_argparse
 from pkg.utils.console import panic
 from pkg.utils.files import read_file
 from progress.bar import ChargingBar
 from sqlalchemy import create_engine
+
+
+def create_argparse():
+    parser = argparse.ArgumentParser(description='Sales forecasts')
+    parser.add_argument(
+        '-c',
+        '--config',
+        required=True,
+        help='Path to config file'
+    )
+    parser.add_argument(
+        '-o',
+        '--output',
+        required=True,
+        help='Path to output CSV file'
+    )
+    parser.add_argument(
+        '-a',
+        '--algorithm',
+        choices=['default', 'mean'],
+        default='default',
+        help='Algorithm to get forecasts'
+    )
+    return parser.parse_args()
 
 
 if __name__ == '__main__':
