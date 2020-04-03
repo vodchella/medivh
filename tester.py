@@ -10,6 +10,7 @@ import yaml
 from pkg.data import get_barcode_daily_sales, create_engine
 from pkg.utils.console import panic
 from pkg.utils.files import read_file
+from pkg.utils.series import get_forecast_accuracy_errors, get_forecast_standard_deviation
 from progress.bar import ChargingBar
 
 
@@ -120,6 +121,7 @@ if __name__ == '__main__':
                     names=columns,
                     index_col=index_columns
                 )
+                series_main = df_main['real-sales'].sort_index()
 
                 for csv_file in args.forecasts:
                     columns = index_columns[:]
@@ -131,6 +133,14 @@ if __name__ == '__main__':
                         names=columns,
                         index_col=index_columns
                     )
+                    series_forecast = df[csv_file].sort_index()
+                    accuracy_errors = get_forecast_accuracy_errors(series_main, series_forecast)
+                    standard_deviation = get_forecast_standard_deviation(series_main, series_forecast)
+
+                    print(f'{csv_file}:')
+                    print(f'... accuracy errors: {accuracy_errors}%')
+                    print(f'... standard deviation: {standard_deviation}')
+
                     df_main = df_main.join(df)
 
                 p = df_main.plot()
