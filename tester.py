@@ -17,16 +17,6 @@ from progress.bar import ChargingBar
 def create_argparse():
     parser = argparse.ArgumentParser(description='Forecasts tester')
     parser.add_argument(
-        '-c',
-        '--config',
-        help='Path to config file'
-    )
-    parser.add_argument(
-        '-o',
-        '--output',
-        help='Path to output CSV file'
-    )
-    parser.add_argument(
         '-g',
         '--generate',
         action='store_true',
@@ -37,6 +27,16 @@ def create_argparse():
         '--benchmark',
         action='store_true',
         help='Process benchmark'
+    )
+    parser.add_argument(
+        '-c',
+        '--config',
+        help='Path to config file'
+    )
+    parser.add_argument(
+        '-o',
+        '--output',
+        help='Path to output CSV file'
     )
     parser.add_argument(
         '-s',
