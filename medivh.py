@@ -5,12 +5,11 @@ import arrow
 import csv
 import yaml
 import sys
-from pkg.data import get_barcode_daily_sales, get_category_daily_sales
+from pkg.data import get_barcode_daily_sales, get_category_daily_sales, create_engine
 from pkg.forecast import get_barcode_forecast, get_category_forecast, get_mean_forecast
 from pkg.utils.console import panic
 from pkg.utils.files import read_file
 from progress.bar import ChargingBar
-from sqlalchemy import create_engine
 
 
 def create_argparse():
@@ -50,11 +49,7 @@ if __name__ == '__main__':
             config = yaml.safe_load(read_file(args.config))
             print(f'Config loaded from {args.config}')
 
-            db = config['mysql']
-            db_path = '%s:%s@%s:%s/%s' % (db['user'], db['pass'], db['host'], db['port'], db['schema'])
-            db_secured_path = '%s:%s@%s:%s/%s' % (db['user'], '*****', db['host'], db['port'], db['schema'])
-            engine = create_engine(f'mysql+mysqlconnector://{db_path}')
-            print(f'Connected to MySQL at {db_secured_path}\n')
+            engine = create_engine(config['mysql'])
 
             print(f'Processing with {args.algorithm} algorithm...')
             stores = config['stores']
@@ -66,17 +61,21 @@ if __name__ == '__main__':
 
             for s in range(len(stores)):
                 store_id = stores[s]
+
                 for b in range(len(barcodes)):
                     barcode = barcodes[b]
                     bar.message = f'[Store: {store_id}] {str(barcode).ljust(13, " ")}'
                     bar.update()
+
+                    df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
+                    df_category = None
+
                     for p in range(len(periods)):
                         period = periods[p]
                         forecast_from_date = arrow.get(period['date'], 'DD.MM.YYYY')
                         forecast_before_date = forecast_from_date.shift(days=period['days'])
 
                         forecast = 0.0
-                        df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
 
                         if args.algorithm == 'default':
                             use_category_forecast = False
@@ -91,7 +90,8 @@ if __name__ == '__main__':
                                 use_category_forecast = True
 
                             if use_category_forecast:
-                                df_category = get_category_daily_sales(engine, store_id, barcode)
+                                if df_category is None:
+                                    df_category = get_category_daily_sales(engine, store_id, barcode)
                                 # noinspection TryExceptPass, PyBroadException
                                 try:
                                     category_forecast = get_category_forecast(df_barcode, df_category, forecast_from_date, forecast_before_date)

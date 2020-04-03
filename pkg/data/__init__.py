@@ -1,6 +1,15 @@
 import pandas as pd
 from pandas import DataFrame
 from pkg.utils.df import create_df_indexed_by_date
+from sqlalchemy import create_engine as sqlalchemy_create_engine
+
+
+def create_engine(db):
+    db_path = '%s:%s@%s:%s/%s' % (db['user'], db['pass'], db['host'], db['port'], db['schema'])
+    db_secured_path = '%s:%s@%s:%s/%s' % (db['user'], '*****', db['host'], db['port'], db['schema'])
+    engine = sqlalchemy_create_engine(f'mysql+mysqlconnector://{db_path}')
+    print(f'Connected to MySQL at {db_secured_path}\n')
+    return engine
 
 
 def get_barcode_daily_sales(engine, store_id: int, code: int) -> DataFrame:
