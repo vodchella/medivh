@@ -91,18 +91,14 @@ def process_default(out_file, algorithm):
     bar = ChargingBar('Waiting...', max=iter_cnt)
     bar.start()
 
-    for s in range(len(stores)):
-        store_id = stores[s]
-
-        for b in range(len(barcodes)):
-            barcode = barcodes[b]
+    for store_id in stores:
+        for barcode in barcodes:
             bar.message = f'[Store: {store_id}] {str(barcode).ljust(13, " ")}'
             bar.update()
 
             df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
 
-            for p in range(len(periods)):
-                period = periods[p]
+            for period in periods:
                 forecast_from_date = arrow.get(period['date'], 'DD.MM.YYYY')
                 forecast_before_date = forecast_from_date.shift(days=period['days'])
 
