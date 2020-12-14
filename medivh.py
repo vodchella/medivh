@@ -30,6 +30,12 @@ def create_argparse():
         help='Path to output CSV file'
     )
     parser.add_argument(
+        '-s',
+        '--short',
+        action='store_true',
+        help='Output short result'
+    )
+    parser.add_argument(
         '-a',
         '--algorithm',
         choices=['default', 'mean'],
@@ -122,7 +128,10 @@ if __name__ == '__main__':
         print(f'Config loaded from {args.config}')
 
         if args.output:
-            process_default(args.output, args.algorithm)
+            if args.short:
+                pass
+            else:
+                process_default(args.output, args.algorithm)
         else:
             panic('No output file specified. Use -o option')
     else:
