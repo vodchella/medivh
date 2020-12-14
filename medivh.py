@@ -129,11 +129,20 @@ def process_short(out_file, in_file, algorithm):
     out_csv_file = open(out_file, 'w', newline='')
     in_csv_file = open(in_file, 'r', newline='\n')
     csv_writer = csv.writer(out_csv_file, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-    csv_reader = csv.reader(out_csv_file, delimiter=',')
+    csv_reader = csv.reader(in_csv_file, delimiter=',')
 
     engine = create_engine(CONFIG['mysql'])
-
     print(f'Processing short output with {algorithm} algorithm...')
+
+    for row in csv_reader:
+        store_id = int(row[0])
+        barcode = int(row[1])
+        forecast_from_date = arrow.get(row[2], 'YYYY-MM-DD')
+        forecast_before_date = forecast_from_date.shift(days=int(row[3]))
+        df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
+
+        forecast = do_forecast(args.algorithm, df_barcode, forecast_from_date, forecast_before_date)
+        csv_writer.writerow([forecast])
 
     out_csv_file.close()
     in_csv_file.close()
