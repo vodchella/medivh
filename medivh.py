@@ -30,6 +30,11 @@ def create_argparse():
         help='Path to output CSV file'
     )
     parser.add_argument(
+        '-i',
+        '--input',
+        help='Path to input CSV file'
+    )
+    parser.add_argument(
         '-s',
         '--short',
         action='store_true',
@@ -118,6 +123,22 @@ def process_default(out_file, algorithm):
     print(f'\nDone. Result was written to {args.output}')
 
 
+def process_short(out_file, in_file, algorithm):
+    global CONFIG
+
+    out_csv_file = open(out_file, 'w', newline='')
+    in_csv_file = open(in_file, 'r', newline='\n')
+    csv_writer = csv.writer(out_csv_file, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+    csv_reader = csv.reader(out_csv_file, delimiter=',')
+
+    engine = create_engine(CONFIG['mysql'])
+
+    print(f'Processing short output with {algorithm} algorithm...')
+
+    out_csv_file.close()
+    in_csv_file.close()
+
+
 if __name__ == '__main__':
     if sys.version_info < (3, 8):
         panic('We need minimum Python version 3.8 to run. Current version: %s.%s.%s' % sys.version_info[:3])
@@ -129,7 +150,10 @@ if __name__ == '__main__':
 
         if args.output:
             if args.short:
-                pass
+                if args.input:
+                    process_short(args.output, args.input, args.algorithm)
+                else:
+                    panic('No input file specified. Use -i option')
             else:
                 process_default(args.output, args.algorithm)
         else:
