@@ -133,9 +133,11 @@ def process_default(out_file, algorithm):
 def process_short(out_file, in_file, algorithm):
     global CONFIG
 
+    lines_count = 0
     if wc and awk:
-        write_stdout(f'Counting {in_file} lines...\t')
-        print(int(awk(wc('-l', in_file), '{ print $1 }')))
+        write_stdout(f'Counting {in_file} lines...  ')
+        lines_count = int(awk(wc('-l', in_file), '{ print $1 }'))
+        print(lines_count)
 
     out_csv_file = open(out_file, 'w', newline='')
     in_csv_file = open(in_file, 'r', newline='\n')
@@ -144,6 +146,11 @@ def process_short(out_file, in_file, algorithm):
 
     engine = create_engine(CONFIG['mysql'])
     print(f'Processing short output with {algorithm} algorithm...')
+
+    bar = None
+    if lines_count > 0:
+        bar = ChargingBar('Waiting...', max=lines_count)
+        bar.start()
 
     for row in csv_reader:
         store_id = int(row[0])
@@ -154,6 +161,9 @@ def process_short(out_file, in_file, algorithm):
 
         forecast = do_forecast(algorithm, df_barcode, forecast_from_date, forecast_before_date)
         csv_writer.writerow([forecast])
+
+        if bar:
+            bar.next()
 
     out_csv_file.close()
     in_csv_file.close()
