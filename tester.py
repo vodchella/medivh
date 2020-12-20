@@ -100,7 +100,13 @@ if __name__ == '__main__':
                             sales = df_barcode.loc[beg.date():end.date()]
                             sales_sum = sales['quantity'].sum()
 
-                            csv_writer.writerow([store_id, barcode, period['date'], period['days'], round(sales_sum, 2)])
+                            csv_writer.writerow([
+                                store_id,
+                                barcode,
+                                period['date'],
+                                period['days'],
+                                round(sales_sum, 2)
+                            ])
                             bar.next()
 
                 bar.finish()
