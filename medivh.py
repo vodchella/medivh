@@ -113,7 +113,7 @@ def process_default(out_file, algorithm):
                 forecast_from_date = arrow.get(period['date'], 'DD.MM.YYYY')
                 forecast_before_date = forecast_from_date.shift(days=period['days'])
 
-                forecast = do_forecast(args.algorithm, df_barcode, forecast_from_date, forecast_before_date)
+                forecast = do_forecast(algorithm, df_barcode, forecast_from_date, forecast_before_date)
 
                 csv_writer.writerow([store_id, barcode, period['date'], period['days'], forecast])
                 bar.next()
@@ -141,7 +141,7 @@ def process_short(out_file, in_file, algorithm):
         forecast_before_date = forecast_from_date.shift(days=int(row[3]))
         df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
 
-        forecast = do_forecast(args.algorithm, df_barcode, forecast_from_date, forecast_before_date)
+        forecast = do_forecast(algorithm, df_barcode, forecast_from_date, forecast_before_date)
         csv_writer.writerow([forecast])
 
     out_csv_file.close()
