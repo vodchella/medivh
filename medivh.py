@@ -7,9 +7,16 @@ import yaml
 import sys
 from pkg.data import get_barcode_daily_sales, create_engine
 from pkg.forecast import get_barcode_forecast, get_mean_forecast
-from pkg.utils.console import panic
+from pkg.utils.console import panic, write_stdout
 from pkg.utils.files import read_file
 from progress.bar import ChargingBar
+
+wc = None
+awk = None
+try:
+    from sh import wc, awk
+except:
+    pass
 
 
 CONFIG = None
@@ -125,6 +132,10 @@ def process_default(out_file, algorithm):
 
 def process_short(out_file, in_file, algorithm):
     global CONFIG
+
+    if wc and awk:
+        write_stdout(f'Counting {in_file} lines...\t')
+        print(int(awk(wc('-l', in_file), '{ print $1 }')))
 
     out_csv_file = open(out_file, 'w', newline='')
     in_csv_file = open(in_file, 'r', newline='\n')
