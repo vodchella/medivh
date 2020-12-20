@@ -152,7 +152,11 @@ def process_short(out_file, in_file, algorithm):
         bar = ChargingBar('Waiting...', max=lines_count)
         bar.start()
 
-    for row in csv_reader:
+    for i, row in enumerate(csv_reader):
+        if i % 10 == 0:
+            bar.message = f'{i} of {lines_count}'
+            bar.update()
+
         store_id = int(row[0])
         barcode = int(row[1])
         forecast_from_date = arrow.get(row[2], 'YYYY-MM-DD')
