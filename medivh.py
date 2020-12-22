@@ -7,16 +7,17 @@ import yaml
 import sys
 from pkg.data import get_barcode_daily_sales, create_engine
 from pkg.forecast import get_barcode_forecast, get_mean_forecast
-from pkg.utils.console import panic, write_stdout
+from pkg.utils.console import panic, write_stdout, write_stderr
 from pkg.utils.files import read_file
 from progress.bar import ChargingBar
+from sh import Command
 
-wc = None
-awk = None
+wc: Command
+awk: Command
 try:
     from sh import wc, awk
-except:
-    pass
+except ImportError as e:
+    write_stderr(f'{str(e)}\n')
 
 
 CONFIG = None
