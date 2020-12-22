@@ -1,60 +1,17 @@
 #!/usr/bin/env python3
 
-import argparse
 import arrow
 import csv
 import pandas as pd
 import matplotlib.pyplot as plt
 import sys
 import yaml
+from pkg.arg_parser.tester import create_argparse
 from pkg.data import get_barcode_daily_sales, create_engine
 from pkg.utils.console import panic
 from pkg.utils.files import read_file
 from pkg.utils.series import get_forecast_accuracy_errors, get_forecast_standard_deviation
 from progress.bar import ChargingBar
-
-
-def create_argparse():
-    parser = argparse.ArgumentParser(description='Forecasts tester')
-    parser.add_argument(
-        '-g',
-        '--generate',
-        action='store_true',
-        help='Generate real sales data'
-    )
-    parser.add_argument(
-        '-b',
-        '--benchmark',
-        action='store_true',
-        help='Process benchmark'
-    )
-    parser.add_argument(
-        '-c',
-        '--config',
-        help='Path to config file'
-    )
-    parser.add_argument(
-        '-o',
-        '--output',
-        help='Path to output CSV file'
-    )
-    parser.add_argument(
-        '-s',
-        '--sales',
-        help='Path to real sales CSV file'
-    )
-    parser.add_argument(
-        '-f',
-        '--forecasts',
-        nargs='+',
-        help='List of files with forecasts'
-    )
-    parser.add_argument(
-        '-i',
-        '--image',
-        help='Path to image file with plot result'
-    )
-    return parser.parse_args()
 
 
 if __name__ == '__main__':
