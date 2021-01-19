@@ -99,11 +99,16 @@ def process_default(out_file, algorithm):
 def process_short(out_file, in_file, algorithm):
     global CONFIG
 
+    beg_date = arrow.get('2019-10-01', 'YYYY-MM-DD')
+    end_date = arrow.get('2020-01-31', 'YYYY-MM-DD')
+    write_stdout(f'Forecast from {beg_date} to {end_date}\n')  # 123 days
+
     lines_count = 0
     if wc and awk:
         write_stdout(f'Counting {in_file} lines...  ')
         lines_count = int(awk(wc('-l', in_file), '{ print $1 }'))
         print(lines_count)
+    ops_count = lines_count * 123
 
     out_csv_file = open(out_file, 'w', newline='')
     in_csv_file = open(in_file, 'r', newline='\n')
@@ -114,26 +119,30 @@ def process_short(out_file, in_file, algorithm):
     print(f'Processing short output with {algorithm} algorithm...')
 
     bar = None
-    if lines_count > 0:
-        bar = ChargingBar('Waiting...', max=lines_count)
+    if ops_count > 0:
+        bar = ChargingBar('Waiting...', max=ops_count)
         bar.start()
 
     for i, row in enumerate(csv_reader):
-        if i % 10 == 0:
-            bar.message = f'{i} of {lines_count}'
-            bar.update()
-
         store_id = int(row[0])
         barcode = int(row[1])
-        forecast_from_date = arrow.get(row[2], 'YYYY-MM-DD')
-        forecast_before_date = forecast_from_date.shift(days=int(row[3]))
         df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
+        for j, d in enumerate(arrow.Arrow.range('day', beg_date, end_date)):
+            forecast_from_date = d
+            forecast_before_date = forecast_from_date.shift(days=5)
 
-        forecast = do_forecast(algorithm, df_barcode, forecast_from_date, forecast_before_date)
-        csv_writer.writerow([forecast])
+            forecast = do_forecast(algorithm, df_barcode, forecast_from_date, forecast_before_date)
+            csv_writer.writerow([int(round(forecast))])
 
-        if bar:
-            bar.next()
+            if bar:
+                curr_op = i * 123 + j
+                if curr_op % 5 == 0:
+                    bar.message = f'{curr_op} of {ops_count}'
+                    bar.update()
+                bar.next()
+
+    bar.message = 'Done'
+    bar.update()
 
     out_csv_file.close()
     in_csv_file.close()
