@@ -124,11 +124,19 @@ def process_short(out_file, in_file, algorithm):
         bar.start()
 
     i = 0
+    dfs = {}
     for row in csv_reader:
         if row is not None and len(row):
             store_id = int(row[0])
             barcode = int(row[1])
-            df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
+
+            key = f'{store_id}-{barcode}'
+            try:
+                df_barcode = dfs[key]
+            except KeyError:
+                df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
+                dfs[key] = df_barcode
+
             for j, d in enumerate(arrow.Arrow.range('day', beg_date, end_date)):
                 forecast_from_date = d
                 forecast_before_date = forecast_from_date.shift(days=5)
