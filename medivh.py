@@ -15,7 +15,7 @@ from sh import Command
 wc: Command
 awk: Command
 try:
-    from sh import wc, awk
+    from sh import wc, sed
 except ImportError as e:
     write_stderr(f'{str(e)}\n')
 
@@ -104,9 +104,9 @@ def process_short(out_file, in_file, algorithm):
     write_stdout(f'Forecast from {beg_date} to {end_date}\n')  # 123 days
 
     lines_count = 0
-    if wc and awk:
-        write_stdout(f'Counting {in_file} lines...  ')
-        lines_count = int(awk(wc('-l', in_file), '{ print $1 }'))
+    if wc and sed:
+        write_stdout(f'Counting {in_file} non-blank lines...  ')
+        lines_count = int(wc(sed(r'/^\s*$/d', in_file), '-l'))
         print(lines_count)
     ops_count = lines_count * 123
 
@@ -123,23 +123,26 @@ def process_short(out_file, in_file, algorithm):
         bar = ChargingBar('Waiting...', max=ops_count)
         bar.start()
 
-    for i, row in enumerate(csv_reader):
-        store_id = int(row[0])
-        barcode = int(row[1])
-        df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
-        for j, d in enumerate(arrow.Arrow.range('day', beg_date, end_date)):
-            forecast_from_date = d
-            forecast_before_date = forecast_from_date.shift(days=5)
+    i = 0
+    for row in csv_reader:
+        if row is not None and len(row):
+            store_id = int(row[0])
+            barcode = int(row[1])
+            df_barcode = get_barcode_daily_sales(engine, store_id, barcode)
+            for j, d in enumerate(arrow.Arrow.range('day', beg_date, end_date)):
+                forecast_from_date = d
+                forecast_before_date = forecast_from_date.shift(days=5)
 
-            forecast = do_forecast(algorithm, df_barcode, forecast_from_date, forecast_before_date)
-            csv_writer.writerow([int(round(forecast))])
+                forecast = do_forecast(algorithm, df_barcode, forecast_from_date, forecast_before_date)
+                csv_writer.writerow([int(round(forecast))])
 
-            if bar:
-                curr_op = i * 123 + j
-                if curr_op % 5 == 0:
-                    bar.message = f'{curr_op} of {ops_count}'
-                    bar.update()
-                bar.next()
+                if bar:
+                    curr_op = i * 123 + j
+                    if curr_op % 5 == 0:
+                        bar.message = f'{curr_op} of {ops_count}'
+                        bar.update()
+                    bar.next()
+            i += 1
 
     bar.message = 'Done'
     bar.update()
